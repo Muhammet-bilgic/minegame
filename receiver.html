@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receiver · Morse Mine</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-crt">
+
+<!-- ============= LOADING ============= -->
+<div id="loadingScreen" class="landing-wrap">
+  <div style="text-align:center;font-family:var(--font-tele);letter-spacing:0.3em;text-transform:uppercase;color:var(--phosphor);text-shadow:0 0 8px var(--phosphor);">
+    <div style="font-size:2rem;margin-bottom:1rem;">▣</div>
+    Connecting to telegraph line…
+  </div>
+</div>
+
+<!-- ============= MAIN ============= -->
+<main id="rxShell" class="rx-shell hidden">
+
+  <header class="rx-header">
+    <div>
+      <h1 class="rx-title">▣ Operator Station</h1>
+      <div class="rx-team"><span class="conn-dot waiting" id="connDot"></span><span id="teamName">—</span></div>
+    </div>
+    <div class="rx-stats">
+      <div class="rx-stat"><span class="label">Time</span><span class="val" id="statTime">00:00</span></div>
+      <div class="rx-stat"><span class="label">Hull</span><span class="val" id="statHealth">100</span></div>
+      <div class="rx-stat danger"><span class="label">Damage</span><span class="val" id="statDamage">0</span></div>
+      <div class="rx-stat"><span class="label">Moves</span><span class="val" id="statMoves">0</span></div>
+    </div>
+  </header>
+
+  <div class="rx-main">
+
+    <!-- Sonar/CRT board -->
+    <div class="sonar-frame">
+      <div id="sonarBoard" class="sonar-board"></div>
+    </div>
+
+    <!-- Controls -->
+    <aside class="rx-controls">
+      <div class="banner" id="instructionBanner">
+        Decode Morse from your <strong>navigator</strong>, then steer.
+      </div>
+
+      <section class="rx-card">
+        <h3>Helm Controls</h3>
+        <div class="dpad">
+          <button class="dpad-btn" data-dir="N" title="North">N</button>
+          <button class="dpad-btn" data-dir="W" title="West">W</button>
+          <div class="dpad-center">⊙</div>
+          <button class="dpad-btn" data-dir="E" title="East">E</button>
+          <button class="dpad-btn" data-dir="S" title="South">S</button>
+        </div>
+        <p style="text-align:center;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:0.6rem;opacity:0.6;">
+          or use arrow / WASD keys
+        </p>
+      </section>
+
+      <section class="rx-card">
+        <h3>Code Key</h3>
+        <div class="morse-key">
+          <div class="row"><span class="letter">N</span><span class="code">−·</span></div>
+          <div class="row"><span class="letter">S</span><span class="code">···</span></div>
+          <div class="row"><span class="letter">E</span><span class="code">·</span></div>
+          <div class="row"><span class="letter">W</span><span class="code">·−−</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="rx-foot">
+    Wireless Morse Receiver · Position transmitted to navigator
+  </footer>
+</main>
+
+<!-- ============= GAME OVER OVERLAY ============= -->
+<div id="overlay" class="overlay hidden">
+  <div id="overlayCard" class="overlay-card">
+    <div class="overlay-title" id="overlayTitle">—</div>
+    <div class="overlay-sub" id="overlaySub">—</div>
+    <div class="overlay-stats">
+      <div class="stat"><span class="label">Time</span><span class="val" id="finalTime">—</span></div>
+      <div class="stat"><span class="label">Damage</span><span class="val" id="finalDamage">—</span></div>
+      <div class="stat"><span class="label">Score</span><span class="val" id="finalScore">—</span></div>
+    </div>
+    <div class="flex gap-1" style="justify-content:center;">
+      <a href="leaderboard.html" class="btn">View Leaderboard</a>
+      <a href="index.html" class="btn btn-ghost">Exit</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============= SCRIPTS ============= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/shared.js"></script>
+
+<script>
+// ============================================================================
+// RECEIVER LOGIC
+// ============================================================================
+
+const params = new URLSearchParams(window.location.search);
+const code = (params.get('code') || '').toUpperCase();
+
+if (!code) { window.location.href = 'index.html'; }
+
+let teamId   = null;
+let teamData = null;
+let gameData = null;
+let timerInterval = null;
+let resultSubmitted = false;
+let isMoving = false;
+
+(async function init() {
+  const found = await window.MM.findTeamByCode(code);
+  if (!found || found.role !== 'receiver') {
+    alert('That code is not a receiver station code.');
+    window.location.href = 'index.html';
+    return;
+  }
+  teamId   = found.teamId;
+  teamData = found.team;
+
+  document.getElementById('teamName').textContent = teamData.name;
+  document.getElementById('connDot').classList.remove('waiting');
+  document.getElementById('connDot').classList.add('connected');
+
+  // Wait for game to exist (it gets created by transmitter or by us)
+  await ensureGameExists();
+
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('rxShell').classList.remove('hidden');
+
+  // Hook up controls
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    btn.addEventListener('click', () => attemptMove(btn.dataset.dir));
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const map = {
+      'ArrowUp': 'N', 'w': 'N', 'W': 'N',
+      'ArrowDown': 'S', 's': 'S', 'S': 'S',
+      'ArrowLeft': 'W', 'a': 'W', 'A': 'W',
+      'ArrowRight': 'E', 'd': 'E', 'D': 'E',
+    };
+    const dir = map[e.key];
+    if (dir) {
+      e.preventDefault();
+      attemptMove(dir);
+    }
+  });
+
+  // Subscribe to live game updates
+  window.MM.refs.games.child(teamId).on('value', onGameUpdate);
+})();
+
+async function ensureGameExists() {
+  const snap = await window.MM.refs.games.child(teamId).once('value');
+  if (!snap.exists()) {
+    // Create a fresh game (in case receiver opens first)
+    const seed = `${teamId}-${Date.now()}-${Math.random()}`;
+    const map = window.MM.generateMap(seed);
+    await window.MM.refs.games.child(teamId).set({
+      seed,
+      status:    'idle',
+      boat:      map.boat,
+      port:      map.port,
+      mines:     map.mines.map(m => ({ ...m, hit: false })),
+      health:    window.MM.MAX_HEALTH,
+      damage:    0,
+      moves:     0,
+      moveLog:   [],
+      trail:     [{ ...map.boat }],
+      startedAt: null,
+      endedAt:   null
+    });
+    await window.MM.refs.teams.child(teamId).update({ status: 'idle' });
+  }
+}
+
+function onGameUpdate(snap) {
+  gameData = snap.val();
+  if (!gameData) return;
+  renderGrid();
+  renderStats();
+  manageTimer();
+  renderEndState();
+  updateButtonsAvailability();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('sonarBoard');
+  const N = window.MM.GRID_SIZE;
+  grid.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  grid.style.gridTemplateRows    = `repeat(${N}, 1fr)`;
+
+  const trailKeys = new Set((gameData.trail || []).map(t => `${t.row},${t.col}`));
+  // Receiver can SEE mines only after they've been detonated
+  const detonatedMines = new Set((gameData.mines || []).filter(m => m.hit).map(m => `${m.row},${m.col}`));
+
+  let html = '';
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const isBoat = gameData.boat.row === r && gameData.boat.col === c;
+      const isPort = gameData.port.row === r && gameData.port.col === c;
+      const isTrail = trailKeys.has(`${r},${c}`) && !isBoat;
+      const isDetMine = detonatedMines.has(`${r},${c}`);
+
+      const classes = ['cell'];
+      if (isPort) classes.push('cell-port');
+      if (isBoat) classes.push('cell-boat');
+      if (isTrail) classes.push('cell-trail');
+      if (isDetMine && !isBoat) classes.push('cell-hit-revealed');
+
+      // Faint coordinates on first row/col to help reading
+      let label = '';
+      if (r === 0 && !isPort && !isBoat && !isDetMine) label = String.fromCharCode(65 + c);
+      else if (c === 0 && !isPort && !isBoat && !isDetMine) label = (r + 1);
+
+      html += `<div class="${classes.join(' ')}" data-r="${r}" data-c="${c}">${label || ''}</div>`;
+    }
+  }
+  grid.innerHTML = html;
+}
+
+function renderStats() {
+  document.getElementById('statHealth').textContent = gameData.health;
+  document.getElementById('statDamage').textContent = gameData.damage;
+  document.getElementById('statMoves').textContent  = gameData.moves;
+}
+
+function manageTimer() {
+  if (gameData.status === 'playing' && gameData.startedAt) {
+    if (!timerInterval) {
+      timerInterval = setInterval(updateTimer, 250);
+      updateTimer();
+    }
+  } else {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (gameData.status !== 'playing') {
+      const elapsed = (gameData.endedAt && gameData.startedAt)
+        ? (gameData.endedAt - gameData.startedAt) / 1000 : 0;
+      document.getElementById('statTime').textContent = window.MM.formatTime(elapsed);
+    }
+  }
+}
+
+function updateTimer() {
+  if (!gameData || !gameData.startedAt) return;
+  const elapsed = (Date.now() - gameData.startedAt) / 1000;
+  document.getElementById('statTime').textContent = window.MM.formatTime(elapsed);
+}
+
+function updateButtonsAvailability() {
+  const ended = gameData.status === 'victory' || gameData.status === 'defeat';
+  document.querySelectorAll('.dpad-btn').forEach(b => {
+    b.disabled = ended;
+  });
+}
+
+// ============================================================================
+// MOVE LOGIC — using Firebase transactions to avoid race conditions
+// ============================================================================
+
+async function attemptMove(dir) {
+  if (isMoving) return;
+  if (!gameData) return;
+  if (gameData.status === 'victory' || gameData.status === 'defeat') return;
+
+  isMoving = true;
+  try {
+    const ref = window.MM.refs.games.child(teamId);
+    let resultStatus = null;
+
+    const txResult = await ref.transaction((g) => {
+      if (!g) return g;
+      if (g.status === 'victory' || g.status === 'defeat') return g;
+
+      // Compute new position
+      const N = window.MM.GRID_SIZE;
+      let { row, col } = g.boat;
+      if (dir === 'N') row -= 1;
+      if (dir === 'S') row += 1;
+      if (dir === 'E') col += 1;
+      if (dir === 'W') col -= 1;
+
+      // Out of bounds = blocked, no move counted
+      if (row < 0 || row >= N || col < 0 || col >= N) {
+        return g; // unchanged
+      }
+
+      // Start the timer on first move
+      if (!g.startedAt) {
+        g.startedAt = Date.now();
+        g.status = 'playing';
+      }
+
+      // Move the boat
+      g.boat = { row, col };
+      g.moves = (g.moves || 0) + 1;
+      g.trail = (g.trail || []).concat([{ row, col }]);
+
+      // Mine check
+      let hitMine = false;
+      g.mines = (g.mines || []).map(m => {
+        if (m.row === row && m.col === col && !m.hit) {
+          hitMine = true;
+          return { ...m, hit: true };
+        }
+        return m;
+      });
+      if (hitMine) {
+        g.damage = (g.damage || 0) + window.MM.DAMAGE_PER_HIT;
+        g.health = Math.max(0, (g.health || window.MM.MAX_HEALTH) - window.MM.DAMAGE_PER_HIT);
+      }
+
+      // Append to move log (keep array bounded)
+      g.moveLog = (g.moveLog || []).concat([{ dir, hit: hitMine, t: Date.now() }]).slice(-50);
+
+      // Win/lose check
+      if (row === g.port.row && col === g.port.col) {
+        g.status = 'victory';
+        g.endedAt = Date.now();
+        resultStatus = 'victory';
+      } else if (g.health <= 0) {
+        g.status = 'defeat';
+        g.endedAt = Date.now();
+        resultStatus = 'defeat';
+      }
+      return g;
+    });
+
+    // Save result to leaderboard once on victory/defeat
+    if (resultStatus && txResult.committed && !resultSubmitted) {
+      resultSubmitted = true;
+      const finalGame = txResult.snapshot.val();
+      await saveResult(finalGame, resultStatus);
+      await window.MM.refs.teams.child(teamId).update({ status: 'finished' });
+    } else if (txResult.committed && txResult.snapshot.val()?.status === 'playing') {
+      await window.MM.refs.teams.child(teamId).update({ status: 'playing' });
+    }
+  } finally {
+    isMoving = false;
+  }
+}
+
+async function saveResult(game, outcome) {
+  const elapsed = (game.endedAt - game.startedAt) / 1000;
+  const score = window.MM.calculateScore(elapsed, game.damage);
+  await window.MM.refs.results.push({
+    teamId,
+    teamName:    teamData.name,
+    outcome,
+    timeSeconds: Math.round(elapsed),
+    damage:      game.damage,
+    moves:       game.moves,
+    score,
+    completedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+}
+
+function renderEndState() {
+  const overlay = document.getElementById('overlay');
+  const card    = document.getElementById('overlayCard');
+  if (gameData.status === 'victory' || gameData.status === 'defeat') {
+    overlay.classList.remove('hidden');
+    card.classList.remove('victory', 'defeat');
+    card.classList.add(gameData.status);
+    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'PORT REACHED' : 'BOAT SUNK';
+    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Transmission complete' : 'Vessel destroyed';
+    const elapsed = (gameData.endedAt - gameData.startedAt) / 1000;
+    document.getElementById('finalTime').textContent   = window.MM.formatTime(elapsed);
+    document.getElementById('finalDamage').textContent = gameData.damage;
+    document.getElementById('finalScore').textContent  = window.MM.calculateScore(elapsed, gameData.damage);
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+</script>
+
+</body>
+</html>

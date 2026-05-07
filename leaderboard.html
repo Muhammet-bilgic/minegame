@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard · Morse Mine</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-ocean">
+
+<main class="lb-shell">
+  <header class="lb-header">
+    <h1 class="lb-title">Roll of Honour</h1>
+    <p class="lb-sub">Best Crews · Lower Score Wins</p>
+  </header>
+
+  <div id="lbContent">
+    <div class="empty-state">Loading…</div>
+  </div>
+
+  <div class="lb-back">
+    <a href="index.html" class="btn btn-ghost">← Back to Office</a>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/shared.js"></script>
+
+<script>
+const lb = document.getElementById('lbContent');
+
+window.MM.refs.results.on('value', (snap) => {
+  const all = snap.val() || {};
+  const entries = Object.values(all);
+
+  // Only victories count (sunk boats don't count for leaderboard)
+  const victories = entries.filter(r => r.outcome === 'victory');
+  // For each team, keep their BEST result
+  const bestByTeam = new Map();
+  victories.forEach(r => {
+    const existing = bestByTeam.get(r.teamName);
+    if (!existing || r.score < existing.score) bestByTeam.set(r.teamName, r);
+  });
+  const ranked = [...bestByTeam.values()].sort((a, b) => a.score - b.score);
+
+  if (ranked.length === 0) {
+    lb.innerHTML = '<div class="empty-state">No completed missions yet · Be the first crew to reach port</div>';
+    return;
+  }
+
+  let rowsHtml = '';
+  ranked.forEach((r, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+    rowsHtml += `
+      <tr>
+        <td class="rank ${rankClass}">${rank === 1 ? '★' : ''} ${rank}</td>
+        <td class="team-name">${window.MM.escapeHtml(r.teamName)}</td>
+        <td>${window.MM.formatTime(r.timeSeconds)}</td>
+        <td style="color:var(--danger);">${r.damage}</td>
+        <td>${r.moves}</td>
+        <td><strong style="color:var(--brass-bright);font-size:1.2rem;">${r.score}</strong></td>
+      </tr>
+    `;
+  });
+
+  lb.innerHTML = `
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Team</th>
+          <th>Time</th>
+          <th>Damage</th>
+          <th>Moves</th>
+          <th style="text-align:right;">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  `;
+});
+</script>
+
+</body>
+</html>

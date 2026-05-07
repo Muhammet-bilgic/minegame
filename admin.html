@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Morse Mine</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-ocean">
+
+<!-- ================== LOGIN GATE ================== -->
+<main id="loginGate" class="landing-wrap">
+  <div class="landing-card">
+    <div class="crest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="11" rx="1"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <h1 class="landing-title">Admin Office</h1>
+    <p class="landing-sub">Restricted Access</p>
+
+    <form id="adminLogin" class="code-form" autocomplete="off">
+      <label for="adminPass">Office Key</label>
+      <input id="adminPass" class="code-input" type="password" autofocus required>
+      <div id="loginErr" class="error-msg hidden">Incorrect key.</div>
+      <button type="submit" class="btn">Enter</button>
+    </form>
+    <div class="landing-foot">
+      <a href="index.html">← Back</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </div>
+  </div>
+</main>
+
+<!-- ================== ADMIN SHELL ================== -->
+<div id="adminShell" class="admin-shell hidden">
+  <header class="admin-header">
+    <div class="admin-title-block">
+      <span class="eyebrow">Telegraph Office</span>
+      <h1>Admin Panel</h1>
+    </div>
+    <div class="flex gap-1">
+      <a href="leaderboard.html" class="btn btn-ghost">Leaderboard</a>
+      <a href="index.html" class="btn btn-ghost">Player View</a>
+      <button id="logoutBtn" class="btn btn-ghost">Logout</button>
+    </div>
+  </header>
+
+  <div class="admin-grid">
+
+    <!-- ========== LEFT: CREATE TEAM ========== -->
+    <aside>
+      <section class="panel">
+        <h2>Create Team</h2>
+        <form id="newTeamForm" class="panel-form" autocomplete="off">
+          <input id="teamNameInput" type="text" placeholder="Team name (e.g. Sea Wolves)" maxlength="30" required>
+          <button type="submit" class="btn">Generate Codes</button>
+        </form>
+
+        <p class="mt-2" style="font-family:var(--font-tele);font-size:0.7rem;letter-spacing:0.15em;color:var(--brass);opacity:0.8;line-height:1.7;">
+          A team gets two codes: one for the <strong style="color:var(--brass-bright)">Transmitter</strong>
+          (sees the map) and one for the <strong style="color:var(--brass-bright)">Receiver</strong>
+          (controls the boat). Hand each code to the right side.
+        </p>
+      </section>
+
+      <section class="panel mt-2">
+        <h2>Quick Help</h2>
+        <ul style="font-family:var(--font-tele);font-size:0.75rem;line-height:1.9;letter-spacing:0.05em;color:var(--parchment);opacity:0.85;list-style:none;padding-left:0;">
+          <li><strong style="color:var(--brass-bright)">▸</strong> Each game uses a fresh random map.</li>
+          <li><strong style="color:var(--brass-bright)">▸</strong> Score = seconds + (damage × 2). Lower is better.</li>
+          <li><strong style="color:var(--brass-bright)">▸</strong> Boat starts with 100 HP. Each mine = 25 damage.</li>
+          <li><strong style="color:var(--brass-bright)">▸</strong> Use <em>Reset</em> to give a team a new map.</li>
+          <li><strong style="color:var(--brass-bright)">▸</strong> <em>Delete</em> removes the team entirely.</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- ========== RIGHT: TEAMS LIST ========== -->
+    <section>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="teams">Teams</button>
+        <button class="admin-tab" data-tab="results">Recent Results</button>
+      </div>
+
+      <div id="teamsTab">
+        <div id="teamsList" class="team-list">
+          <div class="empty-state">No teams yet · Create one to begin</div>
+        </div>
+      </div>
+
+      <div id="resultsTab" class="hidden">
+        <div id="resultsList" class="team-list">
+          <div class="empty-state">No completed games yet</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============= SCRIPTS ============= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/shared.js"></script>
+
+<script>
+// ===== LOGIN =====
+const loginGate = document.getElementById('loginGate');
+const adminShell = document.getElementById('adminShell');
+const loginForm  = document.getElementById('adminLogin');
+const loginErr   = document.getElementById('loginErr');
+
+function unlockAdmin() {
+  loginGate.classList.add('hidden');
+  adminShell.classList.remove('hidden');
+  initAdmin();
+}
+
+// Allow staying logged in for the session
+if (sessionStorage.getItem('mm-admin-ok') === '1') {
+  unlockAdmin();
+}
+
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const pass = document.getElementById('adminPass').value;
+  if (pass === window.ADMIN_PASSWORD) {
+    sessionStorage.setItem('mm-admin-ok', '1');
+    unlockAdmin();
+  } else {
+    loginErr.classList.remove('hidden');
+  }
+});
+
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  sessionStorage.removeItem('mm-admin-ok');
+  location.reload();
+});
+
+// ===== ADMIN INIT =====
+function initAdmin() {
+  // Tabs
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('teamsTab').classList.toggle('hidden', tab.dataset.tab !== 'teams');
+      document.getElementById('resultsTab').classList.toggle('hidden', tab.dataset.tab !== 'results');
+    });
+  });
+
+  // ----- Create team -----
+  document.getElementById('newTeamForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById('teamNameInput');
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const teamId = window.MM.refs.teams.push().key;
+    const txCode = window.MM.generateCode('TX');
+    const rxCode = window.MM.generateCode('RX');
+
+    await window.MM.refs.teams.child(teamId).set({
+      name,
+      transmitterCode: txCode,
+      receiverCode:    rxCode,
+      createdAt:       firebase.database.ServerValue.TIMESTAMP,
+      status:          'idle'  // idle | playing | finished
+    });
+
+    nameInput.value = '';
+    nameInput.focus();
+  });
+
+  // ----- Live teams list -----
+  const teamsList = document.getElementById('teamsList');
+  window.MM.refs.teams.on('value', (snap) => {
+    const teams = snap.val() || {};
+    const entries = Object.entries(teams).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+    if (entries.length === 0) {
+      teamsList.innerHTML = '<div class="empty-state">No teams yet · Create one to begin</div>';
+      return;
+    }
+
+    teamsList.innerHTML = entries.map(([teamId, t]) => `
+      <article class="team-card">
+        <div class="team-card-head">
+          <div class="team-card-name">${window.MM.escapeHtml(t.name)}</div>
+          <div class="team-card-status status-${t.status || 'idle'}">${(t.status || 'idle')}</div>
+        </div>
+        <div class="team-codes">
+          <div class="team-code-block">
+            <span class="label">Transmitter</span>
+            <span class="code" title="Click to copy">${t.transmitterCode}</span>
+          </div>
+          <div class="team-code-block">
+            <span class="label">Receiver</span>
+            <span class="code" title="Click to copy">${t.receiverCode}</span>
+          </div>
+        </div>
+        <div class="team-actions">
+          <button class="btn btn-ghost" data-action="reset" data-team="${teamId}">Reset Game</button>
+          <button class="btn btn-ghost" data-action="copy"  data-team="${teamId}">Copy Codes</button>
+          <button class="btn btn-danger" data-action="delete" data-team="${teamId}">Delete</button>
+        </div>
+      </article>
+    `).join('');
+
+    // Wire up code-click-to-copy
+    teamsList.querySelectorAll('.code').forEach(el => {
+      el.addEventListener('click', () => {
+        navigator.clipboard?.writeText(el.textContent.trim());
+        const orig = el.style.color;
+        el.style.color = 'var(--phosphor)';
+        setTimeout(() => { el.style.color = orig; }, 600);
+      });
+    });
+
+    // Wire up action buttons
+    teamsList.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => handleTeamAction(btn.dataset.action, btn.dataset.team, teams[btn.dataset.team]));
+    });
+  });
+
+  async function handleTeamAction(action, teamId, team) {
+    if (action === 'delete') {
+      if (!confirm(`Delete team "${team.name}"? This cannot be undone.`)) return;
+      await window.MM.refs.teams.child(teamId).remove();
+      await window.MM.refs.games.child(teamId).remove();
+    } else if (action === 'reset') {
+      if (!confirm(`Reset game for "${team.name}"? They'll get a new map.`)) return;
+      await window.MM.refs.games.child(teamId).remove();
+      await window.MM.refs.teams.child(teamId).update({ status: 'idle' });
+    } else if (action === 'copy') {
+      const text = `Team: ${team.name}\nTransmitter code: ${team.transmitterCode}\nReceiver code: ${team.receiverCode}`;
+      navigator.clipboard?.writeText(text);
+      alert('Codes copied to clipboard.');
+    }
+  }
+
+  // ----- Live results -----
+  const resultsList = document.getElementById('resultsList');
+  window.MM.refs.results.orderByChild('completedAt').limitToLast(50).on('value', (snap) => {
+    const results = snap.val() || {};
+    const entries = Object.entries(results).sort((a, b) => (b[1].completedAt || 0) - (a[1].completedAt || 0));
+
+    if (entries.length === 0) {
+      resultsList.innerHTML = '<div class="empty-state">No completed games yet</div>';
+      return;
+    }
+
+    resultsList.innerHTML = entries.map(([id, r]) => `
+      <article class="team-card">
+        <div class="team-card-head">
+          <div class="team-card-name">${window.MM.escapeHtml(r.teamName)}</div>
+          <div class="team-card-status status-${r.outcome === 'victory' ? 'done' : 'idle'}" style="color:${r.outcome === 'victory' ? 'var(--phosphor)' : 'var(--danger)'}">
+            ${r.outcome === 'victory' ? 'Reached Port' : 'Sunk'}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;font-family:var(--font-mono);">
+          <div><span style="display:block;font-size:0.65rem;letter-spacing:0.2em;color:var(--brass-bright);text-transform:uppercase;font-family:var(--font-tele);">Time</span><strong style="font-size:1.2rem;">${window.MM.formatTime(r.timeSeconds)}</strong></div>
+          <div><span style="display:block;font-size:0.65rem;letter-spacing:0.2em;color:var(--brass-bright);text-transform:uppercase;font-family:var(--font-tele);">Damage</span><strong style="font-size:1.2rem;color:var(--danger);">${r.damage}</strong></div>
+          <div><span style="display:block;font-size:0.65rem;letter-spacing:0.2em;color:var(--brass-bright);text-transform:uppercase;font-family:var(--font-tele);">Score</span><strong style="font-size:1.2rem;color:var(--brass-bright);">${r.score}</strong></div>
+        </div>
+        <div class="team-actions">
+          <button class="btn btn-danger" data-result="${id}">Remove</button>
+        </div>
+      </article>
+    `).join('');
+
+    resultsList.querySelectorAll('button[data-result]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (confirm('Remove this result from the leaderboard?')) {
+          await window.MM.refs.results.child(btn.dataset.result).remove();
+        }
+      });
+    });
+  });
+}
+</script>
+
+</body>
+</html>

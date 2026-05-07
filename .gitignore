@@ -1,0 +1,13 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+*.log
+
+# Optional: keep your real Firebase config OUT of public commits
+# Uncomment the next line if you want to keep your keys local-only.
+# (Note: Firebase web config is technically safe to commit — it's
+# meant to be public — but the admin password isn't.)
+# js/firebase-config.js

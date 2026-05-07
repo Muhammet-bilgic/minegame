@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transmitter · Morse Mine</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-parchment">
+
+<!-- ============= LOADING ============= -->
+<div id="loadingScreen" class="landing-wrap">
+  <div style="text-align:center;font-family:var(--font-tele);letter-spacing:0.3em;text-transform:uppercase;color:var(--brass-deep);">
+    <div style="font-size:2rem;margin-bottom:1rem;">⚓</div>
+    Connecting to telegraph line…
+  </div>
+</div>
+
+<!-- ============= MAIN ============= -->
+<main id="txShell" class="tx-shell hidden">
+
+  <header class="tx-header">
+    <div>
+      <h1 class="tx-title">Navigator's Chart</h1>
+      <div class="tx-team"><span class="conn-dot waiting" id="connDot"></span><span id="teamName">—</span></div>
+    </div>
+    <div class="tx-stats">
+      <div class="tx-stat"><span class="label">Time</span><span class="val" id="statTime">00:00</span></div>
+      <div class="tx-stat"><span class="label">Health</span><span class="val" id="statHealth">100</span></div>
+      <div class="tx-stat danger"><span class="label">Damage</span><span class="val" id="statDamage">0</span></div>
+      <div class="tx-stat"><span class="label">Moves</span><span class="val" id="statMoves">0</span></div>
+    </div>
+  </header>
+
+  <div class="tx-main">
+
+    <!-- The parchment chart -->
+    <div class="chart-frame">
+      <div id="grid" class="grid-board"></div>
+    </div>
+
+    <!-- Side panel -->
+    <aside class="tx-side">
+      <div class="banner" id="instructionBanner">
+        Instruct your operator using <strong>Morse</strong>. Direction codes are below.
+      </div>
+
+      <section class="tx-card">
+        <h3>Direction Key</h3>
+        <div class="morse-table">
+          <div class="morse-row"><span class="letter">N</span><span class="code">−·</span></div>
+          <div class="morse-row"><span class="letter">S</span><span class="code">···</span></div>
+          <div class="morse-row"><span class="letter">E</span><span class="code">·</span></div>
+          <div class="morse-row"><span class="letter">W</span><span class="code">·−−</span></div>
+        </div>
+      </section>
+
+      <section class="tx-card">
+        <h3>Move Log</h3>
+        <div id="moveLog" class="move-log">
+          <div style="opacity:0.5;font-style:italic;padding:0.5rem;">Awaiting first move…</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="tx-foot">
+    Naval Telegraph Office · Position relayed via wireless
+  </footer>
+</main>
+
+<!-- ============= GAME OVER OVERLAY ============= -->
+<div id="overlay" class="overlay hidden">
+  <div id="overlayCard" class="overlay-card">
+    <div class="overlay-title" id="overlayTitle">—</div>
+    <div class="overlay-sub" id="overlaySub">—</div>
+    <div class="overlay-stats">
+      <div class="stat"><span class="label">Time</span><span class="val" id="finalTime">—</span></div>
+      <div class="stat"><span class="label">Damage</span><span class="val" id="finalDamage">—</span></div>
+      <div class="stat"><span class="label">Score</span><span class="val" id="finalScore">—</span></div>
+    </div>
+    <div class="flex gap-1" style="justify-content:center;">
+      <a href="leaderboard.html" class="btn">View Leaderboard</a>
+      <a href="index.html" class="btn btn-ghost">Exit</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============= SCRIPTS ============= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/shared.js"></script>
+
+<script>
+// ============================================================================
+// TRANSMITTER LOGIC
+// ============================================================================
+
+const params = new URLSearchParams(window.location.search);
+const code = (params.get('code') || '').toUpperCase();
+
+if (!code) { window.location.href = 'index.html'; }
+
+let teamId   = null;
+let teamData = null;
+let gameData = null;
+let timerInterval = null;
+
+(async function init() {
+  const found = await window.MM.findTeamByCode(code);
+  if (!found || found.role !== 'transmitter') {
+    alert('That code is not a transmitter station code.');
+    window.location.href = 'index.html';
+    return;
+  }
+  teamId   = found.teamId;
+  teamData = found.team;
+
+  document.getElementById('teamName').textContent = teamData.name;
+  document.getElementById('connDot').classList.remove('waiting');
+  document.getElementById('connDot').classList.add('connected');
+
+  // Ensure a game exists for this team
+  await ensureGameExists();
+
+  // Hide loader, show shell
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('txShell').classList.remove('hidden');
+
+  // Subscribe to game updates
+  window.MM.refs.games.child(teamId).on('value', onGameUpdate);
+})();
+
+async function ensureGameExists() {
+  const snap = await window.MM.refs.games.child(teamId).once('value');
+  if (!snap.exists()) {
+    // Create a fresh game using a random seed
+    const seed = `${teamId}-${Date.now()}-${Math.random()}`;
+    const map = window.MM.generateMap(seed);
+    await window.MM.refs.games.child(teamId).set({
+      seed,
+      status:    'idle',          // idle | playing | victory | defeat
+      boat:      map.boat,
+      port:      map.port,
+      mines:     map.mines.map(m => ({ ...m, hit: false })),
+      health:    window.MM.MAX_HEALTH,
+      damage:    0,
+      moves:     0,
+      moveLog:   [],
+      trail:     [{ ...map.boat }],
+      startedAt: null,
+      endedAt:   null
+    });
+    await window.MM.refs.teams.child(teamId).update({ status: 'idle' });
+  }
+}
+
+function onGameUpdate(snap) {
+  gameData = snap.val();
+  if (!gameData) return;
+  renderGrid();
+  renderStats();
+  renderLog();
+  manageTimer();
+  renderEndState();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const N = window.MM.GRID_SIZE;
+  grid.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  grid.style.gridTemplateRows    = `repeat(${N}, 1fr)`;
+
+  const trailKeys = new Set((gameData.trail || []).map(t => `${t.row},${t.col}`));
+  const minePositions = new Map((gameData.mines || []).map(m => [`${m.row},${m.col}`, m]));
+
+  let html = '';
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const isBoat = gameData.boat.row === r && gameData.boat.col === c;
+      const isPort = gameData.port.row === r && gameData.port.col === c;
+      const mine   = minePositions.get(`${r},${c}`);
+      const isTrail = trailKeys.has(`${r},${c}`) && !isBoat;
+
+      const classes = ['cell'];
+      if (mine && !mine.hit) classes.push('cell-mine');
+      if (mine && mine.hit)  classes.push('cell-trail'); // detonated mine
+      if (isPort) classes.push('cell-port');
+      if (isBoat) classes.push('cell-boat');
+      if (isTrail) classes.push('cell-trail');
+
+      const colLetter = String.fromCharCode(65 + c);
+      const label = (r === 0 && !isPort && !mine && !isBoat) ? colLetter : (c === 0 && !isPort && !mine && !isBoat ? (r + 1) : '');
+
+      html += `<div class="${classes.join(' ')}" data-r="${r}" data-c="${c}">${label || ''}</div>`;
+    }
+  }
+  grid.innerHTML = html;
+}
+
+function renderStats() {
+  document.getElementById('statHealth').textContent = gameData.health;
+  document.getElementById('statDamage').textContent = gameData.damage;
+  document.getElementById('statMoves').textContent  = gameData.moves;
+}
+
+function renderLog() {
+  const log = document.getElementById('moveLog');
+  const entries = gameData.moveLog || [];
+  if (entries.length === 0) {
+    log.innerHTML = '<div style="opacity:0.5;font-style:italic;padding:0.5rem;">Awaiting first move…</div>';
+    return;
+  }
+  log.innerHTML = entries.slice().reverse().map((e, idx) => `
+    <div class="move-log-entry ${e.hit ? 'bad' : ''}">
+      <span class="step">#${entries.length - idx}</span>
+      <span class="dir">${window.MM.DIR_NAMES[e.dir] || e.dir}${e.hit ? ' · MINE!' : ''}</span>
+    </div>
+  `).join('');
+}
+
+function manageTimer() {
+  if (gameData.status === 'playing' && gameData.startedAt) {
+    if (!timerInterval) {
+      timerInterval = setInterval(updateTimer, 250);
+      updateTimer();
+    }
+  } else {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    if (gameData.status !== 'playing') {
+      const elapsed = (gameData.endedAt && gameData.startedAt)
+        ? (gameData.endedAt - gameData.startedAt) / 1000
+        : 0;
+      document.getElementById('statTime').textContent = window.MM.formatTime(elapsed);
+    }
+  }
+}
+
+function updateTimer() {
+  if (!gameData || !gameData.startedAt) return;
+  const elapsed = (Date.now() - gameData.startedAt) / 1000;
+  document.getElementById('statTime').textContent = window.MM.formatTime(elapsed);
+}
+
+function renderEndState() {
+  const overlay = document.getElementById('overlay');
+  const card    = document.getElementById('overlayCard');
+  if (gameData.status === 'victory' || gameData.status === 'defeat') {
+    overlay.classList.remove('hidden');
+    card.classList.remove('victory', 'defeat');
+    card.classList.add(gameData.status);
+    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'PORT REACHED' : 'BOAT SUNK';
+    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Mission Accomplished' : 'Lost at Sea';
+    const elapsed = (gameData.endedAt - gameData.startedAt) / 1000;
+    document.getElementById('finalTime').textContent   = window.MM.formatTime(elapsed);
+    document.getElementById('finalDamage').textContent = gameData.damage;
+    document.getElementById('finalScore').textContent  = window.MM.calculateScore(elapsed, gameData.damage);
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+</script>
+
+</body>
+</html>

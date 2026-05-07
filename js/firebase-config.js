@@ -19,6 +19,7 @@
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyA3OdzV0bNjtved4fs1zRHoTKt58wizFGg",
   authDomain: "minegame-157b3.firebaseapp.com",
+  databaseURL: "https://minegame-157b3-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "minegame-157b3",
   storageBucket: "minegame-157b3.firebasestorage.app",
   messagingSenderId: "838813081748",

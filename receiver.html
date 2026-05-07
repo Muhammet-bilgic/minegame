@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Receiver · Morse Mine</title>
+<title>Ontvanger · Morse Mijn</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-crt">
@@ -12,7 +12,7 @@
 <div id="loadingScreen" class="landing-wrap">
   <div style="text-align:center;font-family:var(--font-tele);letter-spacing:0.3em;text-transform:uppercase;color:var(--phosphor);text-shadow:0 0 8px var(--phosphor);">
     <div style="font-size:2rem;margin-bottom:1rem;">▣</div>
-    Connecting to telegraph line…
+    Verbinden met telegraaflijn…
   </div>
 </div>
 
@@ -21,14 +21,14 @@
 
   <header class="rx-header">
     <div>
-      <h1 class="rx-title">▣ Operator Station</h1>
+      <h1 class="rx-title">▣ Operatorstation</h1>
       <div class="rx-team"><span class="conn-dot waiting" id="connDot"></span><span id="teamName">—</span></div>
     </div>
     <div class="rx-stats">
-      <div class="rx-stat"><span class="label">Time</span><span class="val" id="statTime">00:00</span></div>
-      <div class="rx-stat"><span class="label">Hull</span><span class="val" id="statHealth">100</span></div>
-      <div class="rx-stat danger"><span class="label">Damage</span><span class="val" id="statDamage">0</span></div>
-      <div class="rx-stat"><span class="label">Moves</span><span class="val" id="statMoves">0</span></div>
+      <div class="rx-stat"><span class="label">Tijd</span><span class="val" id="statTime">00:00</span></div>
+      <div class="rx-stat"><span class="label">Romp</span><span class="val" id="statHealth">100</span></div>
+      <div class="rx-stat danger"><span class="label">Schade</span><span class="val" id="statDamage">0</span></div>
+      <div class="rx-stat"><span class="label">Zetten</span><span class="val" id="statMoves">0</span></div>
     </div>
   </header>
 
@@ -42,11 +42,11 @@
     <!-- Controls -->
     <aside class="rx-controls">
       <div class="banner" id="instructionBanner">
-        Decode Morse from your <strong>navigator</strong>, then steer.
+        Decodeer Morse van je <strong>navigator</strong> en stuur daarna.
       </div>
 
       <section class="rx-card">
-        <h3>Helm Controls</h3>
+        <h3>Roerbesturing</h3>
         <div class="dpad">
           <button class="dpad-btn" data-dir="N" title="North">N</button>
           <button class="dpad-btn" data-dir="W" title="West">W</button>
@@ -55,12 +55,12 @@
           <button class="dpad-btn" data-dir="S" title="South">S</button>
         </div>
         <p style="text-align:center;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:0.6rem;opacity:0.6;">
-          or use arrow / WASD keys
+          of gebruik pijltjestoetsen / WASD
         </p>
       </section>
 
       <section class="rx-card">
-        <h3>Code Key</h3>
+        <h3>Codesleutel</h3>
         <div class="morse-key">
           <div class="row"><span class="letter">N</span><span class="code">−·</span></div>
           <div class="row"><span class="letter">S</span><span class="code">···</span></div>
@@ -72,7 +72,7 @@
   </div>
 
   <footer class="rx-foot">
-    Wireless Morse Receiver · Position transmitted to navigator
+    Draadloze Morse Ontvanger · Positie verzonden naar navigator
   </footer>
 </main>
 
@@ -82,13 +82,13 @@
     <div class="overlay-title" id="overlayTitle">—</div>
     <div class="overlay-sub" id="overlaySub">—</div>
     <div class="overlay-stats">
-      <div class="stat"><span class="label">Time</span><span class="val" id="finalTime">—</span></div>
-      <div class="stat"><span class="label">Damage</span><span class="val" id="finalDamage">—</span></div>
+      <div class="stat"><span class="label">Tijd</span><span class="val" id="finalTime">—</span></div>
+      <div class="stat"><span class="label">Schade</span><span class="val" id="finalDamage">—</span></div>
       <div class="stat"><span class="label">Score</span><span class="val" id="finalScore">—</span></div>
     </div>
     <div class="flex gap-1" style="justify-content:center;">
-      <a href="leaderboard.html" class="btn">View Leaderboard</a>
-      <a href="index.html" class="btn btn-ghost">Exit</a>
+      <a href="leaderboard.html" class="btn">Bekijk Ranglijst</a>
+      <a href="index.html" class="btn btn-ghost">Afsluiten</a>
     </div>
   </div>
 </div>
@@ -119,7 +119,7 @@ let isMoving = false;
 (async function init() {
   const found = await window.MM.findTeamByCode(code);
   if (!found || found.role !== 'receiver') {
-    alert('That code is not a receiver station code.');
+    alert('Dat is geen ontvangerstationscode.');
     window.location.href = 'index.html';
     return;
   }
@@ -371,8 +371,8 @@ function renderEndState() {
     overlay.classList.remove('hidden');
     card.classList.remove('victory', 'defeat');
     card.classList.add(gameData.status);
-    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'PORT REACHED' : 'BOAT SUNK';
-    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Transmission complete' : 'Vessel destroyed';
+    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'HAVEN BEREIKT' : 'BOOT GEZONKEN';
+    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Transmissie voltooid' : 'Vaartuig vernietigd';
     const elapsed = (gameData.endedAt - gameData.startedAt) / 1000;
     document.getElementById('finalTime').textContent   = window.MM.formatTime(elapsed);
     document.getElementById('finalDamage').textContent = gameData.damage;

@@ -1203,6 +1203,31 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing:
 }
 
 /* ==========================================================================
+   LOGO
+   ========================================================================== */
+
+.logo-wrap {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.site-logo {
+  display: inline-block;
+  max-width: 200px;
+  height: auto;
+  opacity: 0.92;
+}
+
+.lb-logo {
+  display: block;
+  margin: 0 auto 1.25rem;
+}
+
+body.bg-parchment .site-logo {
+  filter: invert(1) brightness(0.25);
+}
+
+/* ==========================================================================
    UTILITIES & SCROLLBAR
    ========================================================================== */
 

@@ -17,13 +17,13 @@
 // ============================================================================
 
 window.FIREBASE_CONFIG = {
-  apiKey:            "PASTE-YOUR-API-KEY-HERE",
-  authDomain:        "your-project.firebaseapp.com",
-  databaseURL:       "https://your-project-default-rtdb.firebaseio.com",
-  projectId:         "your-project",
-  storageBucket:     "your-project.appspot.com",
-  messagingSenderId: "0000000000",
-  appId:             "1:0000000000:web:abcdef123456"
+  apiKey: "AIzaSyA3OdzV0bNjtved4fs1zRHoTKt58wizFGg",
+  authDomain: "minegame-157b3.firebaseapp.com",
+  projectId: "minegame-157b3",
+  storageBucket: "minegame-157b3.firebasestorage.app",
+  messagingSenderId: "838813081748",
+  appId: "1:838813081748:web:ff649d5e311993df889481",
+  measurementId: "G-GRH3RJRS6B"
 };
 
 // ============================================================================

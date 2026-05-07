@@ -30,7 +30,7 @@ window.MM.MORSE_FULL = {
   P: '•--•',  Q: '--•-',  R: '•-•',   S: '•••',   T: '-',
   U: '••-',   V: '•••-',  W: '•--',   X: '-••-',  Y: '-•--',  Z: '--••'
 };
-window.MM.DIR_NAMES = { N: 'NORTH', S: 'SOUTH', E: 'EAST', W: 'WEST' };
+window.MM.DIR_NAMES = { N: 'NOORD', S: 'ZUID', E: 'OOST', W: 'WEST' };
 
 // ---- Code generation --------------------------------------------------------
 window.MM.generateCode = function (prefix) {

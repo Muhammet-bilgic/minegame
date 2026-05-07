@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Morse Mine · Naval Telegraph Office</title>
+<title>Morse Mijn · Marine Telegraafkantoor</title>
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='80' font-size='80'%3E⚓%3C/text%3E%3C/svg%3E">
 </head>
@@ -11,6 +11,10 @@
 
 <main class="landing-wrap">
   <div class="landing-card">
+    <div class="logo-wrap">
+      <img src="eduvolutionx.png" alt="EduVolutionX" class="site-logo">
+    </div>
+
     <div class="crest">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="6" r="2"/>
@@ -20,23 +24,23 @@
       </svg>
     </div>
 
-    <h1 class="landing-title">Naval Telegraph Office</h1>
-    <p class="landing-sub">Morse Mine · Est. 1912</p>
+    <h1 class="landing-title">Marine Telegraafkantoor</h1>
+    <p class="landing-sub">Morse Mijn · Opgericht 1912</p>
 
     <form id="codeForm" class="code-form" autocomplete="off">
-      <label for="codeInput">Enter your station code</label>
+      <label for="codeInput">Voer je stationscode in</label>
       <input id="codeInput" class="code-input" type="text"
              placeholder="TX-XXXX"
              maxlength="8"
              autofocus
              required>
       <div id="errorBox" class="error-msg hidden"></div>
-      <button type="submit" class="btn">Take Station</button>
+      <button type="submit" class="btn">Neem Station</button>
     </form>
 
     <div class="landing-foot">
-      <a href="leaderboard.html">Leaderboard</a>
-      <a href="admin.html">Admin</a>
+      <a href="leaderboard.html">Ranglijst</a>
+      <a href="admin.html">Beheer</a>
     </div>
   </div>
 </main>
@@ -70,14 +74,14 @@
 
     const submitBtn = form.querySelector('button[type=submit]');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Checking…';
+    submitBtn.textContent = 'Controleren…';
 
     try {
       const result = await window.MM.findTeamByCode(code);
       if (!result) {
-        showError('Unknown station code. Check with your instructor.');
+        showError('Onbekende stationscode. Controleer bij je begeleider.');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Take Station';
+        submitBtn.textContent = 'Neem Station';
         return;
       }
       // Route to the correct screen with the code in the URL
@@ -87,9 +91,9 @@
       window.location.href = target;
     } catch (err) {
       console.error(err);
-      showError('Connection failed. Is Firebase configured?');
+      showError('Verbinding mislukt. Is Firebase geconfigureerd?');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Take Station';
+      submitBtn.textContent = 'Neem Station';
     }
   });
 </script>

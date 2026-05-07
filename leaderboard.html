@@ -1,25 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaderboard · Morse Mine</title>
+<title>Ranglijst · Morse Mijn</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-ocean">
 
 <main class="lb-shell">
   <header class="lb-header">
-    <h1 class="lb-title">Roll of Honour</h1>
-    <p class="lb-sub">Best Crews · Lower Score Wins</p>
+    <img src="eduvolutionx.png" alt="EduVolutionX" class="site-logo lb-logo">
+    <h1 class="lb-title">Erelijst</h1>
+    <p class="lb-sub">Beste Bemanningen · Laagste Score Wint</p>
   </header>
 
   <div id="lbContent">
-    <div class="empty-state">Loading…</div>
+    <div class="empty-state">Laden…</div>
   </div>
 
   <div class="lb-back">
-    <a href="index.html" class="btn btn-ghost">← Back to Office</a>
+    <a href="index.html" class="btn btn-ghost">← Terug naar Kantoor</a>
   </div>
 </main>
 
@@ -46,7 +47,7 @@ window.MM.refs.results.on('value', (snap) => {
   const ranked = [...bestByTeam.values()].sort((a, b) => a.score - b.score);
 
   if (ranked.length === 0) {
-    lb.innerHTML = '<div class="empty-state">No completed missions yet · Be the first crew to reach port</div>';
+    lb.innerHTML = '<div class="empty-state">Nog geen voltooide missies · Wees de eerste bemanning die de haven bereikt</div>';
     return;
   }
 
@@ -70,11 +71,11 @@ window.MM.refs.results.on('value', (snap) => {
     <table class="lb-table">
       <thead>
         <tr>
-          <th>Rank</th>
+          <th>Rang</th>
           <th>Team</th>
-          <th>Time</th>
-          <th>Damage</th>
-          <th>Moves</th>
+          <th>Tijd</th>
+          <th>Schade</th>
+          <th>Zetten</th>
           <th style="text-align:right;">Score</th>
         </tr>
       </thead>

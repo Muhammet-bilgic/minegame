@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Transmitter · Morse Mine</title>
+<title>Zender · Morse Mijn</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-parchment">
@@ -12,7 +12,7 @@
 <div id="loadingScreen" class="landing-wrap">
   <div style="text-align:center;font-family:var(--font-tele);letter-spacing:0.3em;text-transform:uppercase;color:var(--brass-deep);">
     <div style="font-size:2rem;margin-bottom:1rem;">⚓</div>
-    Connecting to telegraph line…
+    Verbinden met telegraaflijn…
   </div>
 </div>
 
@@ -21,14 +21,14 @@
 
   <header class="tx-header">
     <div>
-      <h1 class="tx-title">Navigator's Chart</h1>
+      <h1 class="tx-title">Navigatiekaart</h1>
       <div class="tx-team"><span class="conn-dot waiting" id="connDot"></span><span id="teamName">—</span></div>
     </div>
     <div class="tx-stats">
-      <div class="tx-stat"><span class="label">Time</span><span class="val" id="statTime">00:00</span></div>
-      <div class="tx-stat"><span class="label">Health</span><span class="val" id="statHealth">100</span></div>
-      <div class="tx-stat danger"><span class="label">Damage</span><span class="val" id="statDamage">0</span></div>
-      <div class="tx-stat"><span class="label">Moves</span><span class="val" id="statMoves">0</span></div>
+      <div class="tx-stat"><span class="label">Tijd</span><span class="val" id="statTime">00:00</span></div>
+      <div class="tx-stat"><span class="label">Gezondheid</span><span class="val" id="statHealth">100</span></div>
+      <div class="tx-stat danger"><span class="label">Schade</span><span class="val" id="statDamage">0</span></div>
+      <div class="tx-stat"><span class="label">Zetten</span><span class="val" id="statMoves">0</span></div>
     </div>
   </header>
 
@@ -42,11 +42,11 @@
     <!-- Side panel -->
     <aside class="tx-side">
       <div class="banner" id="instructionBanner">
-        Instruct your operator using <strong>Morse</strong>. Direction codes are below.
+        Instrueer je operator via <strong>Morse</strong>. Richtingscodes staan hieronder.
       </div>
 
       <section class="tx-card">
-        <h3>Direction Key</h3>
+        <h3>Richtingssleutel</h3>
         <div class="morse-table">
           <div class="morse-row"><span class="letter">N</span><span class="code">−·</span></div>
           <div class="morse-row"><span class="letter">S</span><span class="code">···</span></div>
@@ -56,16 +56,16 @@
       </section>
 
       <section class="tx-card">
-        <h3>Move Log</h3>
+        <h3>Bewegingslog</h3>
         <div id="moveLog" class="move-log">
-          <div style="opacity:0.5;font-style:italic;padding:0.5rem;">Awaiting first move…</div>
+          <div style="opacity:0.5;font-style:italic;padding:0.5rem;">Wachten op eerste zet…</div>
         </div>
       </section>
     </aside>
   </div>
 
   <footer class="tx-foot">
-    Naval Telegraph Office · Position relayed via wireless
+    Marine Telegraafkantoor · Positie doorgegeven via draadloos
   </footer>
 </main>
 
@@ -75,13 +75,13 @@
     <div class="overlay-title" id="overlayTitle">—</div>
     <div class="overlay-sub" id="overlaySub">—</div>
     <div class="overlay-stats">
-      <div class="stat"><span class="label">Time</span><span class="val" id="finalTime">—</span></div>
-      <div class="stat"><span class="label">Damage</span><span class="val" id="finalDamage">—</span></div>
+      <div class="stat"><span class="label">Tijd</span><span class="val" id="finalTime">—</span></div>
+      <div class="stat"><span class="label">Schade</span><span class="val" id="finalDamage">—</span></div>
       <div class="stat"><span class="label">Score</span><span class="val" id="finalScore">—</span></div>
     </div>
     <div class="flex gap-1" style="justify-content:center;">
-      <a href="leaderboard.html" class="btn">View Leaderboard</a>
-      <a href="index.html" class="btn btn-ghost">Exit</a>
+      <a href="leaderboard.html" class="btn">Bekijk Ranglijst</a>
+      <a href="index.html" class="btn btn-ghost">Afsluiten</a>
     </div>
   </div>
 </div>
@@ -110,7 +110,7 @@ let timerInterval = null;
 (async function init() {
   const found = await window.MM.findTeamByCode(code);
   if (!found || found.role !== 'transmitter') {
-    alert('That code is not a transmitter station code.');
+    alert('Dat is geen zenderstationscode.');
     window.location.href = 'index.html';
     return;
   }
@@ -209,13 +209,13 @@ function renderLog() {
   const log = document.getElementById('moveLog');
   const entries = gameData.moveLog || [];
   if (entries.length === 0) {
-    log.innerHTML = '<div style="opacity:0.5;font-style:italic;padding:0.5rem;">Awaiting first move…</div>';
+    log.innerHTML = '<div style="opacity:0.5;font-style:italic;padding:0.5rem;">Wachten op eerste zet…</div>';
     return;
   }
   log.innerHTML = entries.slice().reverse().map((e, idx) => `
     <div class="move-log-entry ${e.hit ? 'bad' : ''}">
       <span class="step">#${entries.length - idx}</span>
-      <span class="dir">${window.MM.DIR_NAMES[e.dir] || e.dir}${e.hit ? ' · MINE!' : ''}</span>
+      <span class="dir">${window.MM.DIR_NAMES[e.dir] || e.dir}${e.hit ? ' · MIJN!' : ''}</span>
     </div>
   `).join('');
 }
@@ -253,8 +253,8 @@ function renderEndState() {
     overlay.classList.remove('hidden');
     card.classList.remove('victory', 'defeat');
     card.classList.add(gameData.status);
-    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'PORT REACHED' : 'BOAT SUNK';
-    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Mission Accomplished' : 'Lost at Sea';
+    document.getElementById('overlayTitle').textContent = gameData.status === 'victory' ? 'HAVEN BEREIKT' : 'BOOT GEZONKEN';
+    document.getElementById('overlaySub').textContent   = gameData.status === 'victory' ? 'Missie Voltooid' : 'Verloren op Zee';
     const elapsed = (gameData.endedAt - gameData.startedAt) / 1000;
     document.getElementById('finalTime').textContent   = window.MM.formatTime(elapsed);
     document.getElementById('finalDamage').textContent = gameData.damage;
